@@ -13,13 +13,21 @@ The goals / steps of this project are the following:
 
 [//]: # (Image References)
 
-[image1]: ./examples/undistort_output.png "Undistorted"
-[image2]: ./test_images/test1.jpg "Road Transformed"
-[image3]: ./examples/binary_combo_example.jpg "Binary Example"
-[image4]: ./examples/warped_straight_lines.jpg "Warp Example"
-[image5]: ./examples/color_fit_lines.jpg "Fit Visual"
-[image6]: ./examples/example_output.jpg "Output"
-[video1]: ./project_video.mp4 "Video"
+[image1]: ./examples/output_21_0.png "Complete pipeline"
+[image2]: ./output_images/500.jpg?raw=true "Distorted"
+[image3]: ./output_images/500_undistorted.jpg?raw=true "Undistorted"
+[image4]: ./output_images/corners_found13.jpg?raw=true "ChessBoard"
+[image5]: ./output_images/chessboard_caliberated.jpg?raw=true "Distortion correction"
+[image6]: ./output_images/500_masked.jpg?raw=true "Masked"
+[image7]: ./output_images/500_v_channel.jpg?raw=true "Value channel"
+[image8]: ./output_images/500_x_sobel.jpg?raw=true "Sobel x"
+[image9]: ./output_images/500_b_channel.jpg?raw=true "Blue channel"
+[image10]: ./output_images/500_combined.png "combined"
+[image11]: ./output_images/500_birds_eye.jpg?raw=true "Birds_eye"
+[image12]: ./output_images/0_window.png "Sliding Window"
+[image13]: ./output_images/500_region.png "Region Search"
+[image14]: ./output_images/500_result.jpg?raw=true "Result"
+[video1]: ./project_video_processed.mp4 "Video"
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
 
@@ -40,40 +48,52 @@ You're reading it!
 The code for this step is contained in the second and third code cell of the IPython notebook Advanced_pipeline.ipynb. 
 
 I start by preparing "object points", which will be the (x, y, z) coordinates of the chessboard corners in the world. Here I am assuming the chessboard is fixed on the (x, y) plane at z=0, such that the object points are the same for each calibration image.  Thus, `objp` is just a replicated array of coordinates, and `objpoints` will be appended with a copy of it every time I successfully detect all chessboard corners in a test image.  `imgpoints` will be appended with the (x, y) pixel position of each of the corners in the image plane with each successful chessboard detection.  
-
+![alt text][image4]
 I then used the output `objpoints` and `imgpoints` to compute the camera calibration and distortion coefficients using the `cv2.calibrateCamera()` function.  I applied this distortion correction to the test image using the `cv2.undistort()` function and obtained this result: 
 
-![alt text][image1]
+![alt text][image5]
 
 ### Pipeline (single images)
+#### 0. Pipeline overview
+![alt text][image1]
 
 #### 1. Provide an example of a distortion-corrected image.
 
-To demonstrate this step, I will describe how I apply the distortion correction to one of the test images like this one:
+To demonstrate this step, I will describe how I apply the distortion correction to image like this:
+(note: this is not actually from one of the test images. The complete pipeline for test images 1-6 is stored in ./examples/ )
+This is the 500th frame from the video. I will demonstrate the working of the pipeline using this frame.
+
 ![alt text][image2]
+
+To get an undistorted image like this:
+![alt text][image3]
 
 The camera calibration and distortion coefficients are computed in code cell 2 & 3 of Advanced_pipeline.ipynb using the `cv2.calibrateCamera()` function. These cofficients are calculated only once and are then stored in global variables. These cofficients are used to correct distortion in image passed to the pipeline using `cv2.undistort()`. This is done in code cell 5.
 
 
 #### 2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
 
-I used a combination of color and gradient thresholds to generate a binary image (thresholding steps in code cell 5 of Advanced_pipeline.ipynb).  Here's an example of my output for this step.  (note: this is not actually from one of the test images)
+I used a combination of color and gradient thresholds to generate a binary image (thresholding steps in code cell 5 of Advanced_pipeline.ipynb).  Here's an example of my output for this step.
 
-![alt text][image3]
+![alt text][image6]
 
 To get this output perform the following :
 
 * Convert to HSV space and extract V channel from HSV space (Hue, Saturation, Value). This is good at picking the yellow line in varying light conditions.
+![alt text][image7]
 
 * Use sobel x on the extracted value channel. This is better at picking lines at the very end of region of interest.
+![alt text][image8]
 
 * Use the blue channel in RGB to pick the dashed white line. I can use a higher threshold value as the yellow has no blue component.
+![alt text][image9]
 
 * Create a blank binary image to combine the v channel, b channel and sobel x layers with individual threhold value.
 
 * Tune the threshhold values until the lane lines in all parts of the video are present in the binary image. 
-
+![alt text][image10]
 * Use A suitable mask to block out everything that is outside the region of interest
+![alt text][image6]
 
 #### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
 
@@ -87,6 +107,9 @@ I chose the hardcode the source and destination points in the following manner:
 
 I used MS Paint to get the source points from the edges of the road. I calculated the destination points based on the fact that the image i used to get the source points had straight road so the destination points would form a rectangle. 
 
+Result after prespective Transform:
+![alt text][image11]
+
 #### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
 
 This is done in the code cells 6 and 7 of Advanced_pipeline.ipynb. The functions `get_fits()` and `get_fit_contineous()` are used to identified lane-line pixels and fit their positions with a polynomial.
@@ -97,6 +120,9 @@ This is done in the code cells 6 and 7 of Advanced_pipeline.ipynb. The functions
     left_fit = np.polyfit(lefty, leftx, 2)
     right_fit = np.polyfit(righty, rightx, 2)
 ```
+The sliding window search for the first frame of the video.
+
+![alt text][image12]
 
 `get_fit_contineous()` is used when the probable position of the lane line is already known. After the first frame is processed this function is called and the second order polynomial from the last frame are passed to it. These polynomials are used to do a highly targeted search for points on left and right lanes. The size of the region where new points are searched is controlled by tweeking the margine. The search for new points is done in the following manner.
 
@@ -111,7 +137,8 @@ This is done in the code cells 6 and 7 of Advanced_pipeline.ipynb. The functions
 ```
 The points are then used to get the polynomial for the lane lines.
 
-![alt text][image5]
+![alt text][image13]
+
 
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
@@ -136,7 +163,7 @@ A scaling factor is used for x and y to convert the radius from pixles to meters
 
 I implemented this in code cell 9 of Advanced_pipeline.ipynb in the function `draw_road()`.  Here is an example of my result on a test image:
 
-![alt text][image6]
+![alt text][image14]
 
 ---
 
@@ -144,8 +171,10 @@ I implemented this in code cell 9 of Advanced_pipeline.ipynb in the function `dr
 
 #### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
 
-Here's a [link to my video result](./project_video.mp4)
-My Pipeline uses the average value from the past 11 frames for x and y points for the lanes. This ensures that one bad frame does not result in catastrophic failures. It produces smooth transitions from straight to curves and reduces wobblyness to some extent. 
+Here's a [link to my video result](./project_video_processed.mp4)
+
+My Pipeline uses the average value from the past 11 frames for x and y points of the lanes. This ensures that one bad frame does not result in catastrophic failures. It produces smooth transitions from straight to curves and reduces wobblyness to some extent. 
+
 ---
 
 ### Discussion
